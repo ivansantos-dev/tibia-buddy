@@ -1,49 +1,69 @@
 package main
 
 import (
-  "gorm.io/gorm"
-  "gorm.io/driver/sqlite"
-  "net/http"
-  "log"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"log"
+	"net/http"
 )
 
-type Status string
-const (
-  Online Status = "online"
-  Offline Status = "offline" 
-)
-
-type Player struct { 
-  gorm.Model
-  Name string
-  World string
-  Status  Status
+type Player struct {
+	gorm.Model
+	Name     string
+	World    string
+	IsOnline bool
 }
 
 type World struct {
-  gorm.Model
-  Name string
+	gorm.Model
+	Name string
+}
+
+type Profile struct {
+	gorm.Model
+	Name                    string
+	EnablePushNotification  bool
+	EnableEmailNotification bool
+}
+
+type FormerNameStatus = string
+
+const (
+	available FormerNameStatus = "available"
+	expiring  FormerNameStatus = "expiring"
+	claimed   FormerNameStatus = "claimed"
+)
+
+type FormerName struct {
+	gorm.Model
+	Name   string
+	Status string
 }
 
 func initializeGorm() *gorm.DB {
-  dbName := "test.db"
-  log.Println("Initialize Gorm in " + dbName)
+	dbName := "test.db"
+	log.Println("Initialize Gorm in " + dbName)
 
-  db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
-  if err != nil {
-   log.Fatal("failed to connect database", err)
-  }
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
+	if err != nil {
+		log.Fatal("failed to connect database", err)
+	}
 
-  db.AutoMigrate(&Player{})
-  db.AutoMigrate(&World{})
+	db.AutoMigrate(&Player{})
+	db.AutoMigrate(&World{})
+	db.AutoMigrate(&Profile{})
+	db.AutoMigrate(&FormerName{})
 
-  return db
+	return db
 
 }
 
 func main() {
-  initializeGorm()
+	db := initializeGorm()
+	go CheckWorlds(db)
+	go CheckFormerNames(db)
 
-  log.Println("Listening to port: 8090")
-  log.Fatal(http.ListenAndServe(":8090", nil))
+	port := ":8090"
+	log.Println("Listening to port: " + port)
+	// log.Fatal(http.ListenAndServe(port, nil))
 }
