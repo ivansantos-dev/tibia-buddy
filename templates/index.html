@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link href="/static/favicon.ico" rel="icon">
+		<link rel="stylesheet" href="/static/css/pico.min.css">
+
+		<link rel="manifest" href="/static/manifest">
+
+		<script src="/static/htmx.min.js"></script>
+		<title>Tibia Buddy</title>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Vip List</h1>
+			<table role="grid">
+					<thead>
+						<th>Name</th>
+						<th>World</th>
+						<th>Status</th>
+					</thead>
+					<tbody>
+						{{- range .VipList }}
+						<tr>
+							<td>{{ .Name }}</td>
+							<td>{{ .World }}</td>
+							{{ if .IsOnline }}<td style="color:green">online</td>{{else}}<td style="color:red">offline</td>{{end}}
+						</tr>
+						{{end}}
+					</tbody>
+			</table>
+			<form hx-post="/vip-list/add" hx-target="#add-vip">
+				<input type="search" id="search" name="search" placeholder="Search for a buddy..." />
+				<div class="htmx-indicator" aria-busy="true">Loading...</div>
+			</form>
+			<div id="add-vip"></div>
+		</div>
+	</body>
+</html>

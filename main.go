@@ -1,10 +1,14 @@
 package main
 
 import (
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type Player struct {
@@ -55,15 +59,40 @@ func initializeGorm() *gorm.DB {
 	db.AutoMigrate(&FormerName{})
 
 	return db
-
 }
+
+type IndexPageData struct {
+	VipList []Player
+}
+
 
 func main() {
 	db := initializeGorm()
 	go CheckWorlds(db)
 	go CheckFormerNames(db)
 
+	http.Handle("/static/", http.FileServer(http.Dir(".")))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles("templates/index.html")
+		if err != nil {
+			log.Panic("missing file", err)
+		}
+
+		data := IndexPageData{
+			VipList: []Player{
+				{Name: "Aragorn", World: "Optera", IsOnline: true},
+			},
+		}
+		tmpl.Execute(w, data)
+
+	})
+	http.HandleFunc("/vip-list/add/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello, World")
+		time.Sleep(2 * time.Second)
+		log.Println("I am here")
+	})
+
 	port := ":8090"
 	log.Println("Listening to port: " + port)
-	// log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(http.ListenAndServe(port, nil))
 }
