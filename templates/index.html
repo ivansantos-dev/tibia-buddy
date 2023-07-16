@@ -12,7 +12,7 @@
 		<title>Tibia Buddy</title>
 	</head>
 	<body>
-		<div class="container">
+		<div class="container" id="vip-list-table">
 			<h1>Vip List</h1>
 			<table role="grid">
 					<thead>
@@ -30,11 +30,10 @@
 						{{end}}
 					</tbody>
 			</table>
-			<form hx-post="/vip-list/add" hx-target="#add-vip">
-				<input type="search" id="search" name="search" placeholder="Search for a buddy..." />
-				<div class="htmx-indicator" aria-busy="true">Loading...</div>
+			<form hx-post="/vip-list/add" hx-target="#vip-list-table">
+				<input type="input" name="name" placeholder="Search for a buddy..." />
+				<div class="htmx-indicator" aria-busy="true">Searching...</div>
 			</form>
-			<div id="add-vip"></div>
 		</div>
 	</body>
 </html>

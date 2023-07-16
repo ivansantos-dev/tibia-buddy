@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"time"
+	"strings"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -13,9 +12,10 @@ import (
 
 type Player struct {
 	gorm.Model
-	Name     string
-	World    string
-	IsOnline bool
+	Name          string
+	LowerCaseName string
+	World         string
+	IsOnline      bool
 }
 
 type World struct {
@@ -65,7 +65,6 @@ type IndexPageData struct {
 	VipList []Player
 }
 
-
 func main() {
 	db := initializeGorm()
 	go CheckWorlds(db)
@@ -86,13 +85,40 @@ func main() {
 		tmpl.Execute(w, data)
 
 	})
-	http.HandleFunc("/vip-list/add/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, World")
-		time.Sleep(2 * time.Second)
-		log.Println("I am here")
+	http.HandleFunc("/vip-list/add", func(w http.ResponseWriter, r *http.Request) {
+		characterName := r.PostFormValue("name")
+		log.Println(characterName)
+		player := Player{}
+		result := db.Where("lower_case_name == ?", strings.ToLower(characterName)).First(&player)
+		if result.Error != nil {
+			log.Println(result.Error)
+			log.Println("Retrieving char")
+			apiChar, err := GetCharacter(characterName)
+			log.Println("finished get character")
+			if err != nil {
+				// TODO return error
+				log.Println("failed to get character")
+			}
+			log.Println(apiChar)
+			player = Player{Name: apiChar.CharacterInfo.Name, LowerCaseName: strings.ToLower(apiChar.CharacterInfo.Name), World: apiChar.CharacterInfo.World}
+			db.Create(&player)
+		}
+
+		tmpl, err := template.ParseFiles("templates/vip-table.html")
+		if err != nil {
+			log.Println("[ERROR] missing file", err)
+		}
+
+		data := IndexPageData{
+			VipList: []Player{
+				{Name: "Aragorn", World: "Optera", IsOnline: true},
+				{Name: player.Name, World: player.World, IsOnline: false},
+			},
+		}
+		tmpl.Execute(w, data)
 	})
 
-	port := ":8090"
+	port := "127.0.0.1:8090"
 	log.Println("Listening to port: " + port)
 	log.Fatal(http.ListenAndServe(port, nil))
 }

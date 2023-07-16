@@ -1,9 +1,11 @@
 package main
 
 import (
-	"gorm.io/gorm"
 	"log"
+	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 var worldCheckSleep = 30 * time.Second
@@ -27,7 +29,7 @@ func CheckWorlds(db *gorm.DB) {
 			players := make([]Player, len(worldInfo.OnlinePlayers))
 			for i, player := range worldInfo.OnlinePlayers {
 				playerNames[i] = player.Name
-				players[i] = Player{Name: player.Name, World: worldName}
+				players[i] = Player{Name: player.Name, LowerCaseName: strings.ToLower(player.Name), World: worldName}
 			}
 
 			log.Printf("World: %s, Online Player Count: %d\n", worldName, len(players))
