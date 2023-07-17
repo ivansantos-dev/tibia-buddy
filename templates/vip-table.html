@@ -1,3 +1,4 @@
+{{ define "vip-list-table" }}
 <div class="container" id="vip-list-table">
 	<h1>Vip List</h1>
 	<table role="grid">
@@ -7,7 +8,7 @@
 			<th>Status</th>
 		</thead>
 		<tbody>
-			{{- range .VipList }}
+			{{- range . }}
 			<tr>
 				<td>{{ .Name }}</td>
 				<td>{{ .World }}</td>
@@ -17,7 +18,7 @@
 		</tbody>
 	</table>
 	<form hx-post="/vip-list/add" hx-target="#vip-list-table">
-		<input type="search" id="search" name="search" placeholder="Search for a buddy..." />
-		<div class="htmx-indicator" aria-busy="true">Loading...</div>
+		<input type="input" name="name" placeholder="Search for a buddy..." />
+		<div class="htmx-indicator" aria-busy="true">Searching...</div>
 	</form>
-</div>
+{{ end }}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var worldCheckSleep = 30 * time.Second
@@ -28,15 +29,15 @@ func CheckWorlds(db *gorm.DB) {
 			playerNames := make([]string, len(worldInfo.OnlinePlayers))
 			players := make([]Player, len(worldInfo.OnlinePlayers))
 			for i, player := range worldInfo.OnlinePlayers {
-				playerNames[i] = player.Name
-				players[i] = Player{Name: player.Name, LowerCaseName: strings.ToLower(player.Name), World: worldName}
+				playerNames[i] = strings.ToLower(player.Name)
+				players[i] = Player{Name: player.Name, ID: strings.ToLower(player.Name), World: worldName}
 			}
 
 			log.Printf("World: %s, Online Player Count: %d\n", worldName, len(players))
 			tx := db.Begin()
-			tx.Create(&players)
-			tx.Model(&Player{}).Where("world = ? AND is_online = ?", worldInfo.Name, false).Update("status", false)
-			tx.Model(&Player{}).Where("name IN ?", playerNames).Update("status", true)
+			tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&players)
+			tx.Model(&Player{}).Where("world = ? AND is_online = ?", worldInfo.Name, false).Update("is_online", false)
+			tx.Model(&Player{}).Where("id IN ?", playerNames).Update("is_online", true)
 			tx.Commit()
 		}
 
