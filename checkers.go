@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -18,10 +18,10 @@ func CheckWorlds(db *gorm.DB) {
 
 	for {
 		for _, world := range worlds {
-			log.Printf("Checking world: %s\n", world.Name)
+			log.WithField("world", world.Name).Info("Checking world")
 			worldInfo, err := GetWorld(world.Name)
 			if err != nil {
-				log.Println("[ERROR] retrieving world from tibia data api", err)
+				log.Error("[ERROR] retrieving world from tibia data api", err)
 			}
 
 			worldName := worldInfo.Name
@@ -33,12 +33,13 @@ func CheckWorlds(db *gorm.DB) {
 				players[i] = Player{Name: player.Name, ID: strings.ToLower(player.Name), World: worldName}
 			}
 
-			log.Printf("World: %s, Online Player Count: %d\n", worldName, len(players))
+			log.WithFields(log.Fields{"world": worldName, "player count": len(players)}).Info("Finish processing world.")
 			tx := db.Begin()
 			tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&players)
 			tx.Model(&Player{}).Where("world = ? AND is_online = ?", worldInfo.Name, false).Update("is_online", false)
 			tx.Model(&Player{}).Where("id IN ?", playerNames).Update("is_online", true)
 			tx.Commit()
+			time.Sleep(3 * time.Second)
 		}
 
 		time.Sleep(worldCheckSleep)
@@ -54,10 +55,10 @@ func CheckFormerNames(db *gorm.DB) {
 	for {
 		for _, formerName := range formerNames {
 			expiringName := formerName.Name
-			log.Printf("Checking former name: %s\n", expiringName)
+			log.WithField("name", expiringName).Info("Checking former name")
 			apiCharacter, err := GetCharacter(expiringName)
 			if err != nil {
-				log.Println("[ERROR] retrieving former name from tibia data api", err)
+				log.Error("[ERROR] retrieving former name from tibia data api", err)
 			}
 
 			if expiringName == apiCharacter.CharacterInfo.Name {

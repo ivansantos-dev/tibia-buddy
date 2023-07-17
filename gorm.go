@@ -50,7 +50,7 @@ type FormerName struct {
 
 type VipFriend struct {
 	gorm.Model
-	UserId     string
+	UserId     string 
 	PlayerName string
 }
 
