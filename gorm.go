@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"strings"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -50,8 +49,8 @@ type FormerName struct {
 
 type VipFriend struct {
 	gorm.Model
-	UserId     string 
-	PlayerName string
+	UserId   string
+	PlayerId string
 }
 
 func initializeGorm() *gorm.DB {
@@ -73,16 +72,8 @@ func initializeGorm() *gorm.DB {
 }
 
 func GetVipList(db *gorm.DB, userId string) []Player {
-	vipFriends := make([]VipFriend, 0)
-	db.Where("user_id = ?", userId).Find(&vipFriends)
-
-	var vipNames []string
-	for _, friend := range vipFriends {
-		vipNames = append(vipNames, strings.ToLower( friend.PlayerName))
-	}
-
 	var vipList []Player
-	db.Where("id in ?", vipNames).Find(&vipList)
+	db.Model(&Player{}).Where("user_id = ?", userId).Joins("left join vip_friends on players.id = vip_friends.player_id").Scan(&vipList)
 
 	return vipList
 }

@@ -38,17 +38,18 @@ func main() {
 		if err != nil {
 			log.Error(err)
 		}
-		player := Player{ID: characterId, Name: apiChar.CharacterInfo.Name, World: apiChar.CharacterInfo.World}
-		db.FirstOrCreate(&player)
-
-		var world = World{Name: apiChar.CharacterInfo.World}
-		db.FirstOrCreate(&world)
-
-		log.WithFields(log.Fields{"name": player.Name, "userId": userId}).Info("adding vip friend")
-		vipFriend := VipFriend{UserId: userId, PlayerName: player.Name}
+		log.WithFields(log.Fields{"name": characterId, "userId": userId}).Info("adding vip friend")
+		vipFriend := VipFriend{UserId: userId, PlayerId: characterId}
 		result2 := db.Where(&vipFriend).FirstOrCreate(&vipFriend)
 		log.Info(result2.RowsAffected, result2.Error)
 
+		if result2.RowsAffected > 0 {
+			player := Player{ID: characterId, Name: apiChar.CharacterInfo.Name, World: apiChar.CharacterInfo.World}
+			db.FirstOrCreate(&player)
+
+			var world = World{Name: apiChar.CharacterInfo.World}
+			db.FirstOrCreate(&world)
+		}
 
 		tmpl, err := template.ParseFiles("templates/vip-table.html")
 		if err != nil {
