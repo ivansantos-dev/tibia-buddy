@@ -6,6 +6,7 @@
 			<th>Name</th>
 			<th>World</th>
 			<th>Status</th>
+			<th><span /></th>
 		</thead>
 		<tbody>
 			{{- range . }}
@@ -13,11 +14,12 @@
 				<td>{{ .Name }}</td>
 				<td>{{ .World }}</td>
 				{{ if .IsOnline }}<td style="color:green">online</td>{{else}}<td style="color:red">offline</td>{{end}}
+				<td><a hx-delete="/vip-list/{{ .Name }}" hx-target="#vip-list-table">Remove</a></td>
 			</tr>
 			{{end}}
 		</tbody>
 	</table>
-	<form hx-post="/vip-list/add" hx-target="#vip-list-table">
+	<form hx-post="/vip-list" hx-target="#vip-list-table">
 		<input type="input" name="name" placeholder="Search for a buddy..." />
 		<div class="htmx-indicator" aria-busy="true">Searching...</div>
 	</form>
