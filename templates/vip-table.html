@@ -1,5 +1,5 @@
 {{ define "vip-list-table" }}
-<div id="vip-list-table">
+<div id="vip-list-table" hx-trigger="every 2s" hx-get="/vip-list">
 	<h1>Vip List</h1>
 	<table role="grid">
 		<thead>

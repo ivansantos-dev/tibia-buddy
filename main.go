@@ -37,9 +37,9 @@ func main() {
 		}
 
 		data := SettingsPageData{
-			PushNotificationEnabled: true,
+			PushNotificationEnabled:  true,
 			EmailNotificationEnabled: false,
-			NotificationEmails: "yeah@me.com,noway@me.com",
+			NotificationEmails:       "yeah@me.com,noway@me.com",
 		}
 		tmpl.Execute(w, data)
 	})
@@ -56,6 +56,15 @@ func main() {
 		}
 		tmpl.Execute(w, data)
 	})
+
+	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles("templates/former-names-table.html")
+		if err != nil {
+			log.Error("missing file", err)
+		}
+
+		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
+	}).Methods("GET")
 
 	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
 		formerName := r.PostFormValue("name")
@@ -92,7 +101,7 @@ func main() {
 		}
 
 		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
-	})
+	}).Methods("POST")
 
 	router.HandleFunc("/former-names/{name}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -108,6 +117,15 @@ func main() {
 
 		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
 	})
+
+	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles("templates/vip-table.html")
+		if err != nil {
+			log.Error("missing file", err)
+		}
+
+		tmpl.ExecuteTemplate(w, "vip-list-table", GetVipList(db, userId))
+	}).Methods("GET")
 
 	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
 		characterName := r.PostFormValue("name")
@@ -137,7 +155,7 @@ func main() {
 		}
 
 		tmpl.ExecuteTemplate(w, "vip-list-table", GetVipList(db, userId))
-	})
+	}).Methods("POST")
 
 	router.HandleFunc("/vip-list/{player}", func(w http.ResponseWriter, r *http.Request) {
 		log.Info("here")
