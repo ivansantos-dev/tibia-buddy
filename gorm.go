@@ -44,7 +44,8 @@ const (
 type FormerName struct {
 	gorm.Model
 	Name   string
-	Status string
+	Status FormerNameStatus
+	UserId string
 }
 
 type VipFriend struct {
@@ -78,8 +79,9 @@ func GetVipList(db *gorm.DB, userId string) []Player {
 	return vipList
 }
 
-// func GetWorld() World, error {
-// 	var world World
-// 	db.Find()
-// 	return nil, nil
-// }
+func GetFormerNames(db *gorm.DB, userId string) []FormerName {
+	var formerNames [] FormerName
+	db.Where("user_id = ?", userId).Find(&formerNames)
+
+	return formerNames
+}

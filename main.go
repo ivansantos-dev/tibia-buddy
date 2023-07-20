@@ -10,7 +10,8 @@ import (
 )
 
 type IndexPageData struct {
-	VipList []Player
+	VipList     []Player
+	FormerNames []FormerName
 }
 
 var userId = "1"
@@ -22,16 +23,70 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.Handle("/static/", http.FileServer(http.Dir(".")))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("templates/index.html", "templates/vip-table.html")
+		tmpl, err := template.ParseFiles("templates/index.html", "templates/vip-table.html", "templates/former-names-table.html")
 		if err != nil {
 			log.Error("missing file", err)
 		}
 
 		data := IndexPageData{
-			VipList: GetVipList(db, userId)}
+			VipList:     GetVipList(db, userId),
+			FormerNames: GetFormerNames(db, userId),
+		}
 		tmpl.Execute(w, data)
+	})
+
+	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
+		formerName := r.PostFormValue("name")
+		apiChar, err := GetCharacter(formerName)
+		if err != nil {
+			log.Error(err)
+		}
+
+		status := expiring
+		if strings.EqualFold(apiChar.CharacterInfo.Name, formerName) {
+			status = claimed
+		}
+
+		if apiChar.CharacterInfo.World == "" {
+			status = available
+		}
+
+		var actualName string
+		if status == expiring {
+			for _, actualFormerName := range apiChar.CharacterInfo.FormerNames {
+				if strings.EqualFold(actualFormerName, formerName) {
+					actualName = actualFormerName
+					break
+				}
+			}
+		}
+
+		log.WithFields(log.Fields{"name": actualName, "userId": userId}).Info("add former name")
+		db.Where("name = ? AND user_id = ?", actualName, userId).FirstOrCreate(&FormerName{Name: actualName, Status: status, UserId: userId})
+
+		tmpl, err := template.ParseFiles("templates/former-names-table.html")
+		if err != nil {
+			log.Error("missing file", err)
+		}
+
+		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
+	})
+
+	router.HandleFunc("/former-names/{name}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		formerName := vars["name"]
+
+		log.WithField("formerName", formerName).Info("deleting former name")
+		db.Unscoped().Where("name = ? AND user_id = ?", formerName, userId).Delete(&FormerName{})
+
+		tmpl, err := template.ParseFiles("templates/former-names-table.html")
+		if err != nil {
+			log.Error("missing file", err)
+		}
+
+		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
 	})
 
 	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
@@ -69,8 +124,7 @@ func main() {
 		playerId := strings.ToLower(vars["player"])
 
 		log.WithField("playerId", playerId).Info("deleting vip friend")
-		db.Unscoped().Where("player_id = ? AND user_id",playerId, userId).Delete(&VipFriend{})
-
+		db.Unscoped().Where("player_id = ? AND user_id = ?", playerId, userId).Delete(&VipFriend{})
 
 		tmpl, err := template.ParseFiles("templates/vip-table.html")
 		if err != nil {
@@ -79,7 +133,6 @@ func main() {
 
 		tmpl.ExecuteTemplate(w, "vip-list-table", GetVipList(db, userId))
 	})
-
 
 	port := "127.0.0.1:8090"
 	log.Info("Listening to port: " + port)
