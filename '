@@ -116,8 +116,8 @@ func main() {
 			log.Error(err)
 		}
 
-		characterName = apiChar.CharacterInfo.Name
 		characterId := strings.ToLower(characterName)
+		characterName = apiChar.CharacterInfo.Name
 		log.WithFields(log.Fields{"name": characterName, "userId": userId}).Info("adding vip friend")
 		vipFriend := VipFriend{UserId: userId, PlayerId: characterId}
 		result2 := db.Where(&vipFriend).FirstOrCreate(&vipFriend)

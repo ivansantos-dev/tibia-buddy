@@ -1,5 +1,5 @@
 {{ define "former-names-table" }}
-<div class="container" id="former-names-table">
+<div id="former-names-table">
 	<h1>Former Names</h1>
 	<table role="grid">
 		<thead>
@@ -18,7 +18,8 @@
 		</tbody>
 	</table>
 	<form hx-post="/former-names" hx-target="#former-names-table">
+		<progress class="htmx-indicator"></progress>
 		<input type="input" name="name" placeholder="Search for a former name..." />
-		<div class="htmx-indicator" aria-busy="true">Searching...</div>
 	</form>
+</div>
 {{ end }}

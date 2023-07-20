@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link href="/static/favicon.ico" rel="icon">
+		<link rel="stylesheet" href="/static/css/pico.min.css">
+
+		<link rel="manifest" href="/static/manifest.json">
+
+		<script src="/static/htmx.min.js"></script>
+		<title>Tibia Buddy - Profile</title>
+	</head>
+		<div>
+			
+		</div>
+	<body>
+		<head>
+			<nav class="container">
+				<ul>
+					<li><a href="/"><strong>Tibia Buddy</strong></a></li>
+				</ul>
+				<ul>
+					<li><a href="/profile">Profile</a></li>
+					<!-- <li><a href="#" role="button">Logout</a></li> -->
+				</ul>
+			</nav>
+		</head>
+		<main class="container">
+			<h1>Settings</h1>
+			<form>
+				<fieldset>
+					<label for="switch">
+						<input type="checkbox" id="pushNotificationEnabled" name="pushNotificationEnabled" role="switch" {{ if .PushNotificationEnabled }} checked {{ end }}>
+							Push Notifications	
+					</label>
+					<label for="switch_disabled">
+						<input type="checkbox" id="emailNotificationEnabled" name="emailNotificationEnabled" role="switch" {{ if .EmailNotificationEnabled }} checked {{ end }}>
+							Email Notifications
+					</label>
+					<label for="firstname">
+						Notification Emails
+						<input type="text" id="notificationEmails" name="notificationEmails" placeholder="email1@me.com,email2@me.com" value="{{ .NotificationEmails }}" required>
+					</label>
+				</fieldset>
+			</form>
+		</main>
+	</body>
+</html>
+
