@@ -60,6 +60,8 @@ func main() {
 	go CheckFormerNames(db)
 
 	gothic.Store = store
+	GOOGLE_OAUTH_CLIENT_ID := "470889723490-621rbcg3hk06stb2ubrujnu70anf1ugr.apps.googleusercontent.com"
+	GOOGLE_OAUTH_CLIENT_SECRET := "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"
 	goth.UseProviders(
 		google.New(GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, "http://localhost:8090/auth/google/callback", "email", "profile"),
 	)

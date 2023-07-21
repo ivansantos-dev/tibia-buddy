@@ -11,24 +11,33 @@
 		<script src="/static/htmx.min.js"></script>
 		<title>Tibia Buddy</title>
 	</head>
-		<div>
-			
-		</div>
 	<body>
-		<head>
-			<nav class="container">
-				<ul>
-					<li><a href="/"><strong>Tibia Buddy</strong></a></li>
-				</ul>
-				<ul>
-					<li><a href="/settings">Profile</a></li>
-					<!-- <li><a href="#" role="button">Logout</a></li> -->
-				</ul>
-			</nav>
-		</head>
+		<nav class="container">
+			<ul>
+				<li><a href="/"><strong>Tibia Buddy</strong></a></li>
+			</ul>
+			<ul>
+				<li><a href="/settings">Profile</a></li>
+				<li><a href="/logout" role="button">Logout</a></li>
+			</ul>
+		</nav>
 		<main class="container">
-		{{ template "vip-list-table" .VipList }}
-		{{ template "former-names-table" .FormerNames }}
+			<h1>Vip List</h1>
+			<div id="vip-list-table" hx-trigger="every 2s" hx-get="/vip-list">
+				{{ template "vip-list-table" .VipList }}
+			</div>
+			<form hx-post="/vip-list" hx-target="#vip-list-table">
+				<progress class="htmx-indicator"></progress>
+				<input type="input" name="name" placeholder="Search for a buddy..." />
+			</form>
+			<h1>Former Names</h1>
+			<div id="former-names-table" hx-trigger="every 2s" hx-get="/former-names">
+				{{ template "former-names-table" .FormerNames }}
+			</div>
+			<form hx-post="/former-names" hx-target="#former-names-table">
+				<progress class="htmx-indicator"></progress>
+				<input type="input" name="name" placeholder="Search for a character name..." />
+			</form>
 		</main>
 	</body>
 </html>

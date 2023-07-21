@@ -1,6 +1,4 @@
 {{ define "vip-list-table" }}
-<div id="vip-list-table" hx-trigger="every 2s" hx-get="/vip-list">
-	<h1>Vip List</h1>
 	<table role="grid">
 		<thead>
 			<th>Name</th>
@@ -19,9 +17,4 @@
 			{{end}}
 		</tbody>
 	</table>
-	<form hx-post="/vip-list" hx-target="#vip-list-table">
-		<progress class="htmx-indicator"></progress>
-		<input type="input" name="name" placeholder="Search for a buddy..." />
-	</form>
-</div>
 {{ end }}

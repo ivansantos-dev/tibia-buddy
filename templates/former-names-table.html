@@ -1,6 +1,4 @@
 {{ define "former-names-table" }}
-<div id="former-names-table" hx-trigger="every 30s" hx-get="/former-names">
-	<h1>Former Names</h1>
 	<table role="grid">
 		<thead>
 			<th>Expiring Name</th>
@@ -17,9 +15,4 @@
 			{{end}}
 		</tbody>
 	</table>
-	<form hx-post="/former-names" hx-target="#former-names-table">
-		<progress class="htmx-indicator"></progress>
-		<input type="input" name="name" placeholder="Search for a former name..." />
-	</form>
-</div>
 {{ end }}
