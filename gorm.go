@@ -25,12 +25,12 @@ type World struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-type Profile struct {
+type UserSetting struct {
 	gorm.Model
-	Name                    string
-	EnablePushNotification  bool
-	EnableEmailNotification bool
-	NotificationEmail       string
+	Name                     string
+	PushNotificationEnabled  bool
+	EmailNotificationEnabled bool
+	NotificationEmails       string
 }
 
 type FormerNameStatus = string
@@ -65,7 +65,7 @@ func initializeGorm() *gorm.DB {
 
 	db.AutoMigrate(&Player{})
 	db.AutoMigrate(&World{})
-	db.AutoMigrate(&Profile{})
+	db.AutoMigrate(&UserSetting{})
 	db.AutoMigrate(&FormerName{})
 	db.AutoMigrate(&VipFriend{})
 
@@ -80,8 +80,15 @@ func GetVipList(db *gorm.DB, userId string) []Player {
 }
 
 func GetFormerNames(db *gorm.DB, userId string) []FormerName {
-	var formerNames [] FormerName
+	var formerNames []FormerName
 	db.Where("user_id = ?", userId).Find(&formerNames)
 
 	return formerNames
+}
+
+func GetUserSettings(db *gorm.DB, userId string) UserSetting {
+	var user UserSetting
+	db.First(&user, userId)
+
+	return user
 }

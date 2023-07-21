@@ -1,11 +1,16 @@
 package main
 
 import (
+	"encoding/gob"
 	"html/template"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
+	"github.com/markbates/goth/providers/google"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -14,37 +19,88 @@ type IndexPageData struct {
 	FormerNames []FormerName
 }
 
-type SettingsPageData struct {
-	PushNotificationEnabled  bool
-	EmailNotificationEnabled bool
-	NotificationEmails       string
+var userId = "1"
+var sessionName = "auth"
+var store = initializeSessionStore()
+
+func initializeSessionStore() *sessions.CookieStore {
+	key := "update me at some point"
+	store := sessions.NewCookieStore([]byte(key))
+	store.Options.Path = "/"
+	store.Options.HttpOnly = true
+	return store
 }
 
-var userId = "1"
+func addUserToSession(wr http.ResponseWriter, req *http.Request, user goth.User) {
+	session, err := store.Get(req, sessionName)
+	if err != nil {
+		log.Print("Error ", err)
+	}
+
+	// Remove the raw data to reduce the size
+	user.RawData = map[string]interface{}{}
+
+	session.Values["user"] = user
+	err = session.Save(req, wr)
+	if err != nil {
+		log.Error("failed to save session", err)
+	}
+}
+
+func removeUserFromSession(wr http.ResponseWriter, req *http.Request) {
+	session, _ := store.Get(req, sessionName)
+	session.Values["user"] = goth.User{}
+	session.Save(req, wr)
+}
 
 func main() {
 	db := initializeGorm()
+	gob.Register(goth.User{})
 	go CheckWorlds(db)
 	go CheckFormerNames(db)
 
+	gothic.Store = store
+	goth.UseProviders(
+		google.New(GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, "http://localhost:8090/auth/google/callback", "email", "profile"),
+	)
+
 	router := mux.NewRouter()
-
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	router.HandleFunc("/profile", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("templates/profile.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
 
-		data := SettingsPageData{
-			PushNotificationEnabled:  true,
-			EmailNotificationEnabled: false,
-			NotificationEmails:       "yeah@me.com,noway@me.com",
+	router.HandleFunc("/auth/{provider}", func(w http.ResponseWriter, r *http.Request) {
+		gothic.BeginAuthHandler(w, r)
+	})
+
+	router.HandleFunc("/auth/{provider}/callback", func(w http.ResponseWriter, r *http.Request) {
+		user, err := gothic.CompleteUserAuth(w, r)
+		if err != nil {
+			log.Error(err)
 		}
-		tmpl.Execute(w, data)
+		addUserToSession(w, r, user)
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+
+	router.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Logging out")
+		err := gothic.Logout(w, r)
+		if err != nil {
+			log.Print("Logout fail", err)
+		}
+		removeUserFromSession(w, r)
+		w.Header().Set("Location", "/")
+		w.WriteHeader(http.StatusTemporaryRedirect)
 	})
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		session, _ := store.Get(r, sessionName)
+		user := session.Values["user"]
+		if user == nil || user.(goth.User).IDToken == "" {
+			indexTemplate := `<p><a href="/auth/google">Log in with Google</a></p>`
+			t, _ := template.New("foo").Parse(indexTemplate)
+			t.Execute(w, nil)
+			return
+		}
+
 		tmpl, err := template.ParseFiles("templates/index.html", "templates/vip-table.html", "templates/former-names-table.html")
 		if err != nil {
 			log.Error("missing file", err)
@@ -55,6 +111,15 @@ func main() {
 			FormerNames: GetFormerNames(db, userId),
 		}
 		tmpl.Execute(w, data)
+	})
+
+	router.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles("templates/profile.html")
+		if err != nil {
+			log.Error("missing file", err)
+		}
+
+		tmpl.Execute(w, GetUserSettings(db, userId))
 	})
 
 	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +223,6 @@ func main() {
 	}).Methods("POST")
 
 	router.HandleFunc("/vip-list/{player}", func(w http.ResponseWriter, r *http.Request) {
-		log.Info("here")
 		vars := mux.Vars(r)
 
 		playerId := strings.ToLower(vars["player"])
