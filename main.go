@@ -15,8 +15,14 @@ import (
 )
 
 type IndexPageData struct {
+	IsLoggedIn  bool
 	VipList     []Player
 	FormerNames []FormerName
+}
+
+type ProfilePageData struct {
+	IsLoggedIn  bool
+	UserSetting UserSetting
 }
 
 var userId = "1"
@@ -69,7 +75,7 @@ func main() {
 	router := mux.NewRouter()
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
-	router.HandleFunc("/auth/{provider}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/login/{provider}", func(w http.ResponseWriter, r *http.Request) {
 		gothic.BeginAuthHandler(w, r)
 	})
 
@@ -94,21 +100,21 @@ func main() {
 	})
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		isLoggedIn := true
 		session, _ := store.Get(r, sessionName)
 		user := session.Values["user"]
 		if user == nil || user.(goth.User).IDToken == "" {
-			indexTemplate := `<p><a href="/auth/google">Log in with Google</a></p>`
-			t, _ := template.New("foo").Parse(indexTemplate)
-			t.Execute(w, nil)
-			return
+			isLoggedIn = false
+
 		}
 
-		tmpl, err := template.ParseFiles("templates/index.html", "templates/vip-table.html", "templates/former-names-table.html")
+		tmpl, err := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/vip-table.html", "templates/former-names-table.html")
 		if err != nil {
 			log.Error("missing file", err)
 		}
 
 		data := IndexPageData{
+			IsLoggedIn:  isLoggedIn,
 			VipList:     GetVipList(db, userId),
 			FormerNames: GetFormerNames(db, userId),
 		}
@@ -116,12 +122,12 @@ func main() {
 	})
 
 	router.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("templates/profile.html")
+		tmpl, err := template.ParseFiles("templates/layout.html", "templates/profile.html")
 		if err != nil {
 			log.Error("missing file", err)
 		}
 
-		tmpl.Execute(w, GetUserSettings(db, userId))
+		tmpl.Execute(w, ProfilePageData{IsLoggedIn: true, UserSetting: GetUserSettings(db, userId)})
 	})
 
 	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
