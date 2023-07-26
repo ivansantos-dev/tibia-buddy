@@ -1,22 +1,18 @@
 {{ define "slot" }}
 <h1>Vip List</h1>
 <div id="vip-list-table" hx-trigger="every 2s" hx-get="/vip-list">
-	{{ template "vip-list-table" .VipList }}
+	{{ template "vip-list-table" .VipListTableData }}
 </div>
-{{- if .IsLoggedIn }}
 <form hx-post="/vip-list" hx-target="#vip-list-table">
 	<progress class="htmx-indicator"></progress>
 	<input type="input" name="name" placeholder="Search for a buddy..." />
 </form>
-{{ end }}
 <h1>Former Names</h1>
 <div id="former-names-table" hx-trigger="every 2s" hx-get="/former-names">
-	{{ template "former-names-table" .FormerNames }}
+	{{ template "former-names-table" .FormerNamesTableData }}
 </div>
-{{- if .IsLoggedIn }}
 <form hx-post="/former-names" hx-target="#former-names-table">
 	<progress class="htmx-indicator"></progress>
 	<input type="input" name="name" placeholder="Search for a character name..." />
 </form>
-{{ end }}
 {{ end }}

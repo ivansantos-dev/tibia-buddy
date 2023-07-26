@@ -7,10 +7,8 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
-	"github.com/markbates/goth/providers/google"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,38 +33,7 @@ type ProfilePageData struct {
 }
 
 var userId = "1"
-var sessionName = "auth"
-var store = initializeSessionStore()
 
-func initializeSessionStore() *sessions.CookieStore {
-	key := "update me at some point"
-	store := sessions.NewCookieStore([]byte(key))
-	store.Options.Path = "/"
-	store.Options.HttpOnly = true
-	return store
-}
-
-func addUserToSession(wr http.ResponseWriter, req *http.Request, user goth.User) {
-	session, err := store.Get(req, sessionName)
-	if err != nil {
-		log.Print("Error ", err)
-	}
-
-	// Remove the raw data to reduce the size
-	user.RawData = map[string]interface{}{}
-
-	session.Values["user"] = user
-	err = session.Save(req, wr)
-	if err != nil {
-		log.Error("failed to save session", err)
-	}
-}
-
-func removeUserFromSession(wr http.ResponseWriter, req *http.Request) {
-	session, _ := store.Get(req, sessionName)
-	session.Values["user"] = goth.User{}
-	session.Save(req, wr)
-}
 
 func main() {
 	db := initializeGorm()
@@ -74,12 +41,6 @@ func main() {
 	go CheckWorlds(db)
 	go CheckFormerNames(db)
 
-	gothic.Store = store
-	GOOGLE_OAUTH_CLIENT_ID := "470889723490-621rbcg3hk06stb2ubrujnu70anf1ugr.apps.googleusercontent.com"
-	GOOGLE_OAUTH_CLIENT_SECRET := "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"
-	goth.UseProviders(
-		google.New(GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, "http://localhost:8090/auth/google/callback", "email", "profile"),
-	)
 
 	router := mux.NewRouter()
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
@@ -93,7 +54,7 @@ func main() {
 		if err != nil {
 			log.Error(err)
 		}
-		addUserToSession(w, r, user)
+		AddUserToSession(w, r, user)
 		http.Redirect(w, r, "/", http.StatusFound)
 	})
 
@@ -103,7 +64,7 @@ func main() {
 		if err != nil {
 			log.Print("Logout fail", err)
 		}
-		removeUserFromSession(w, r)
+		RemoveUserFromSession(w, r)
 		w.Header().Set("Location", "/")
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	})
@@ -122,9 +83,9 @@ func main() {
 		}
 
 		data := IndexPageData{
-			IsLoggedIn:  isLoggedIn,
+			IsLoggedIn:           isLoggedIn,
 			VipListTableData:     VipListTableData{VipList: GetVipList(db, userId)},
-			FormerNamesTableData: FormerNamesTableData{ FormerNames: GetFormerNames(db, userId)},
+			FormerNamesTableData: FormerNamesTableData{FormerNames: GetFormerNames(db, userId)},
 		}
 		tmpl.Execute(w, data)
 	})
@@ -144,7 +105,7 @@ func main() {
 			log.Error("missing file", err)
 		}
 
-		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
+		tmpl.ExecuteTemplate(w, "former-names-table", FormerNamesTableData{FormerNames: GetFormerNames(db, userId)})
 	}).Methods("GET")
 
 	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +142,7 @@ func main() {
 			log.Error("missing file", err)
 		}
 
-		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
+		tmpl.ExecuteTemplate(w, "former-names-table", FormerNamesTableData{FormerNames: GetFormerNames(db, userId)})
 	}).Methods("POST")
 
 	router.HandleFunc("/former-names/{name}", func(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +157,7 @@ func main() {
 			log.Error("missing file", err)
 		}
 
-		tmpl.ExecuteTemplate(w, "former-names-table", GetFormerNames(db, userId))
+		tmpl.ExecuteTemplate(w, "former-names-table", FormerNamesTableData{FormerNames: GetFormerNames(db, userId)})
 	})
 
 	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +166,7 @@ func main() {
 			log.Error("missing file", err)
 		}
 
-		tmpl.ExecuteTemplate(w, "vip-list-table", GetVipList(db, userId))
+		tmpl.ExecuteTemplate(w, "vip-list-table", VipListTableData{VipList: GetVipList(db, userId)})
 	}).Methods("GET")
 
 	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
@@ -235,7 +196,7 @@ func main() {
 			log.Error("missing file", err)
 		}
 
-		tmpl.ExecuteTemplate(w, "vip-list-table", GetVipList(db, userId))
+		tmpl.ExecuteTemplate(w, "vip-list-table", VipListTableData{VipList: GetVipList(db, userId)})
 	}).Methods("POST")
 
 	router.HandleFunc("/vip-list/{player}", func(w http.ResponseWriter, r *http.Request) {
@@ -251,7 +212,7 @@ func main() {
 			log.Error("missing file", err)
 		}
 
-		tmpl.ExecuteTemplate(w, "vip-list-table", GetVipList(db, userId))
+		tmpl.ExecuteTemplate(w, "vip-list-table", VipListTableData{VipList: GetVipList(db, userId)})
 	})
 
 	port := "127.0.0.1:8090"
