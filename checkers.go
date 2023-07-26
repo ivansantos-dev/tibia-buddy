@@ -21,7 +21,7 @@ func CheckWorlds(db *gorm.DB) {
 			log.WithField("world", world.Name).Info("Checking world")
 			worldInfo, err := GetWorld(world.Name)
 			if err != nil {
-				log.Error("[ERROR] retrieving world from tibia data api", err)
+				log.Error("Failed to retrieve world from tibia data api", err)
 			}
 
 			worldName := worldInfo.Name
@@ -32,13 +32,14 @@ func CheckWorlds(db *gorm.DB) {
 				playerNames[i] = strings.ToLower(player.Name)
 				players[i] = Player{Name: player.Name, ID: strings.ToLower(player.Name), World: worldName}
 			}
-
-			log.WithFields(log.Fields{"world": worldName, "player count": len(players)}).Info("Finish processing world.")
+			
 			tx := db.Begin()
 			tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&players)
-			tx.Model(&Player{}).Where("world = ? AND is_online = ?", worldInfo.Name, false).Update("is_online", false)
+			tx.Model(&Player{}).Where("world = ?", worldName).Update("is_online", false)
 			tx.Model(&Player{}).Where("id IN ?", playerNames).Update("is_online", true)
 			tx.Commit()
+
+			log.WithFields(log.Fields{"world": worldName, "player count": len(players)}).Info("Finish processing world.")
 			time.Sleep(3 * time.Second)
 		}
 
@@ -58,7 +59,7 @@ func CheckFormerNames(db *gorm.DB) {
 			log.WithField("name", expiringName).Info("Checking former name")
 			apiCharacter, err := GetCharacter(expiringName)
 			if err != nil {
-				log.Error("[ERROR] retrieving former name from tibia data api", err)
+				log.Error("Failed to retrieve former name from tibia data api", err)
 			}
 
 			if expiringName == apiCharacter.CharacterInfo.Name {

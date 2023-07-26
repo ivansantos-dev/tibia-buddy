@@ -15,11 +15,20 @@ import (
 )
 
 type IndexPageData struct {
-	IsLoggedIn  bool
-	VipList     []Player
-	FormerNames []FormerName
+	IsLoggedIn           bool
+	VipListTableData     VipListTableData
+	FormerNamesTableData FormerNamesTableData
 }
 
+type VipListTableData struct {
+	Error   string
+	VipList []Player
+}
+
+type FormerNamesTableData struct {
+	Error       string
+	FormerNames []FormerName
+}
 type ProfilePageData struct {
 	IsLoggedIn  bool
 	UserSetting UserSetting
@@ -105,7 +114,6 @@ func main() {
 		user := session.Values["user"]
 		if user == nil || user.(goth.User).IDToken == "" {
 			isLoggedIn = false
-
 		}
 
 		tmpl, err := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/vip-table.html", "templates/former-names-table.html")
@@ -115,8 +123,8 @@ func main() {
 
 		data := IndexPageData{
 			IsLoggedIn:  isLoggedIn,
-			VipList:     GetVipList(db, userId),
-			FormerNames: GetFormerNames(db, userId),
+			VipListTableData:     VipListTableData{VipList: GetVipList(db, userId)},
+			FormerNamesTableData: FormerNamesTableData{ FormerNames: GetFormerNames(db, userId)},
 		}
 		tmpl.Execute(w, data)
 	})
