@@ -10,6 +10,7 @@ import (
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,6 +37,43 @@ type ProfilePageData struct {
 
 var userId = "1"
 
+func CreateFormerName(db *gorm.DB, formerName string) error {
+	apiChar, err := GetCharacter(formerName)
+	if err != nil {
+		log.Error(err)
+	}
+
+	status := expiring
+	if strings.EqualFold(apiChar.CharacterInfo.Name, formerName) {
+		status = claimed
+	}
+
+	if apiChar.CharacterInfo.World == "" {
+		status = available
+	}
+
+	var actualName string
+	if status == expiring {
+		for _, actualFormerName := range apiChar.CharacterInfo.FormerNames {
+			if strings.EqualFold(actualFormerName, formerName) {
+				actualName = actualFormerName
+				break
+			}
+		}
+	}
+
+	log.WithFields(log.Fields{"name": actualName, "userId": userId}).Info("add former name")
+	db.Where("name = ? AND user_id = ?", actualName, userId).FirstOrCreate(&FormerName{Name: actualName, Status: status, UserId: userId})
+
+	return nil
+}
+
+func DeleteFormerName(db *gorm.DB, formerName string) error {
+	log.WithField("formerName", formerName).Info("deleting former name")
+	db.Unscoped().Where("name = ? AND user_id = ?", formerName, userId).Delete(&FormerName{})
+	return nil
+}
+
 func main() {
 	db := initializeGorm()
 	gob.Register(goth.User{})
@@ -48,11 +86,8 @@ func main() {
 	r.Static("/static", "./static")
 
 	r.GET("/", func(c *gin.Context) {
-
 		data := IndexPageData{
-			IsLoggedIn:           false,
-			VipListTableData:     VipListTableData{VipList: GetVipList(db, userId)},
-			FormerNamesTableData: FormerNamesTableData{FormerNames: GetFormerNames(db, userId)},
+			IsLoggedIn: false,
 		}
 
 		c.HTML(200, "index.html", data)
@@ -64,6 +99,16 @@ func main() {
 	})
 
 	r.GET("/former-names", func(c *gin.Context) {
+		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
+	})
+
+	r.POST("/former-names", func(c *gin.Context) {
+		CreateFormerName(db, c.PostForm("name"))
+		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
+	})
+
+	r.DELETE("/former-names/:formerName", func(c *gin.Context) {
+		DeleteFormerName(db, c.Params.ByName("formerName"))
 		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
 	})
 
@@ -117,45 +162,7 @@ func main() {
 		tmpl.Execute(w, data)
 	})
 
-	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
-		formerName := r.PostFormValue("name")
-		apiChar, err := GetCharacter(formerName)
-		if err != nil {
-			log.Error(err)
-		}
-
-		status := expiring
-		if strings.EqualFold(apiChar.CharacterInfo.Name, formerName) {
-			status = claimed
-		}
-
-		if apiChar.CharacterInfo.World == "" {
-			status = available
-		}
-
-		var actualName string
-		if status == expiring {
-			for _, actualFormerName := range apiChar.CharacterInfo.FormerNames {
-				if strings.EqualFold(actualFormerName, formerName) {
-					actualName = actualFormerName
-					break
-				}
-			}
-		}
-
-		log.WithFields(log.Fields{"name": actualName, "userId": userId}).Info("add former name")
-		db.Where("name = ? AND user_id = ?", actualName, userId).FirstOrCreate(&FormerName{Name: actualName, Status: status, UserId: userId})
-
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	}).Methods("POST")
-
 	router.HandleFunc("/former-names/{name}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		formerName := vars["name"]
-
-		log.WithField("formerName", formerName).Info("deleting former name")
-		db.Unscoped().Where("name = ? AND user_id = ?", formerName, userId).Delete(&FormerName{})
-
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}).Methods("DELETE")
 
