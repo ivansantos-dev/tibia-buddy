@@ -10,9 +10,10 @@
 			<tr>
 				<td>{{ .Name }}</td>
 				<td>{{ .Status }}</td>
-				<td><a hx-delete="/former-names/{{ .Name }}" hx-target="#former-names-table">Remove</a></td>
+				<td><a hx-delete="/former-names/{{ .Name }}" hx-target="body">Remove</a></td>
 			</tr>
 			{{end}}
 		</tbody>
 	</table>
+	<span>{{ .Error }}</span>
 {{ end }}

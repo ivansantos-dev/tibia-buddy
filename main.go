@@ -34,13 +34,11 @@ type ProfilePageData struct {
 
 var userId = "1"
 
-
 func main() {
 	db := initializeGorm()
 	gob.Register(goth.User{})
 	go CheckWorlds(db)
 	go CheckFormerNames(db)
-
 
 	router := mux.NewRouter()
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
@@ -90,24 +88,6 @@ func main() {
 		tmpl.Execute(w, data)
 	})
 
-	router.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("templates/layout.html", "templates/profile.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		tmpl.Execute(w, ProfilePageData{IsLoggedIn: true, UserSetting: GetUserSettings(db, userId)})
-	})
-
-	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("templates/former-names-table.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		tmpl.ExecuteTemplate(w, "former-names-table", FormerNamesTableData{FormerNames: GetFormerNames(db, userId)})
-	}).Methods("GET")
-
 	router.HandleFunc("/former-names", func(w http.ResponseWriter, r *http.Request) {
 		formerName := r.PostFormValue("name")
 		apiChar, err := GetCharacter(formerName)
@@ -137,12 +117,7 @@ func main() {
 		log.WithFields(log.Fields{"name": actualName, "userId": userId}).Info("add former name")
 		db.Where("name = ? AND user_id = ?", actualName, userId).FirstOrCreate(&FormerName{Name: actualName, Status: status, UserId: userId})
 
-		tmpl, err := template.ParseFiles("templates/former-names-table.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		tmpl.ExecuteTemplate(w, "former-names-table", FormerNamesTableData{FormerNames: GetFormerNames(db, userId)})
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}).Methods("POST")
 
 	router.HandleFunc("/former-names/{name}", func(w http.ResponseWriter, r *http.Request) {
@@ -152,31 +127,17 @@ func main() {
 		log.WithField("formerName", formerName).Info("deleting former name")
 		db.Unscoped().Where("name = ? AND user_id = ?", formerName, userId).Delete(&FormerName{})
 
-		tmpl, err := template.ParseFiles("templates/former-names-table.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		tmpl.ExecuteTemplate(w, "former-names-table", FormerNamesTableData{FormerNames: GetFormerNames(db, userId)})
-	})
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}).Methods("DELETE")
 
 	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("templates/vip-table.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		tmpl.ExecuteTemplate(w, "vip-list-table", VipListTableData{VipList: GetVipList(db, userId)})
-	}).Methods("GET")
-
-	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
-		characterName := r.PostFormValue("name")
-		apiChar, err := GetCharacter(characterName)
+		inputName := r.PostFormValue("name")
+		apiChar, err := GetCharacter(inputName)
 		if err != nil {
 			log.Error(err)
 		}
 
-		characterName = apiChar.CharacterInfo.Name
+		characterName := apiChar.CharacterInfo.Name
 		characterId := strings.ToLower(characterName)
 		log.WithFields(log.Fields{"name": characterName, "userId": userId}).Info("adding vip friend")
 		vipFriend := VipFriend{UserId: userId, PlayerId: characterId}
@@ -191,12 +152,7 @@ func main() {
 			db.FirstOrCreate(&world)
 		}
 
-		tmpl, err := template.ParseFiles("templates/vip-table.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		tmpl.ExecuteTemplate(w, "vip-list-table", VipListTableData{VipList: GetVipList(db, userId)})
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}).Methods("POST")
 
 	router.HandleFunc("/vip-list/{player}", func(w http.ResponseWriter, r *http.Request) {
@@ -207,12 +163,7 @@ func main() {
 		log.WithField("playerId", playerId).Info("deleting vip friend")
 		db.Unscoped().Where("player_id = ? AND user_id = ?", playerId, userId).Delete(&VipFriend{})
 
-		tmpl, err := template.ParseFiles("templates/vip-table.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		tmpl.ExecuteTemplate(w, "vip-list-table", VipListTableData{VipList: GetVipList(db, userId)})
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
 	port := "127.0.0.1:8090"

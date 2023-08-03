@@ -12,7 +12,7 @@
 				<td>{{ .Name }}</td>
 				<td>{{ .World }}</td>
 				{{ if .IsOnline }}<td style="color:green">online</td>{{else}}<td style="color:red">offline</td>{{end}}
-				<td><a hx-delete="/vip-list/{{ .Name }}" hx-target="#vip-list-table">Remove</a></td>
+				<td><a hx-delete="/vip-list/{{ .Name }}" hx-target="body">Remove</a></td>
 			</tr>
 			{{end}}
 		</tbody>

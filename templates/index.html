@@ -1,18 +1,68 @@
 {{ define "slot" }}
 <h1>Vip List</h1>
-<div id="vip-list-table" hx-trigger="every 2s" hx-get="/vip-list">
-	{{ template "vip-list-table" .VipListTableData }}
+<div id="vip-list-table">
+	<table role="grid">
+		<thead>
+			<th>Name</th>
+			<th>World</th>
+			<th>Status</th>
+			<th><span /></th>
+		</thead>
+		<tbody>
+			{{- range .VipListTableData.VipList }}
+			<tr>
+				<td>{{ .Name }}</td>
+				<td>{{ .World }}</td>
+				{{ if .IsOnline }}<td style="color:green">online</td>{{else}}<td style="color:red">offline</td>{{end}}
+				<td><a hx-delete="/vip-list/{{ .Name }}" hx-target="body">Remove</a></td>
+			</tr>
+			{{end}}
+		</tbody>
+	</table>
 </div>
-<form hx-post="/vip-list" hx-target="#vip-list-table">
+<form hx-post="/vip-list" hx-target="body">
 	<progress class="htmx-indicator"></progress>
 	<input type="input" name="name" placeholder="Search for a buddy..." />
 </form>
 <h1>Former Names</h1>
-<div id="former-names-table" hx-trigger="every 2s" hx-get="/former-names">
-	{{ template "former-names-table" .FormerNamesTableData }}
+<div id="former-names-table">
+	<table role="grid">
+		<thead>
+			<th>Expiring Name</th>
+			<th>Status</th>
+			<th><span /></th>
+		</thead>
+		<tbody>
+			{{- range .FormerNamesTableData.FormerNames }}
+			<tr>
+				<td>{{ .Name }}</td>
+				<td>{{ .Status }}</td>
+				<td><a hx-delete="/former-names/{{ .Name }}" hx-target="body">Remove</a></td>
+			</tr>
+			{{end}}
+		</tbody>
+	</table>
 </div>
-<form hx-post="/former-names" hx-target="#former-names-table">
+<form hx-post="/former-names" hx-target="body">
 	<progress class="htmx-indicator"></progress>
 	<input type="input" name="name" placeholder="Search for a character name..." />
 </form>
+
+	{{ if .Error }}
+	<dialog open>
+		<article>
+			<header>
+				<a href="#close" aria-label="Close" class="close"></a>
+				Modal title
+			</header>
+			<p>
+			Nunc nec ligula a tortor sollicitudin dictum in vel enim. 
+			Quisque facilisis turpis vel eros dictum aliquam et nec turpis. 
+			Sed eleifend a dui nec ullamcorper. 
+			Praesent vehicula lacus ac justo accumsan ullamcorper.
+			</p>
+		</article>
+	</dialog>
+	{{ end }}
+
 {{ end }}
