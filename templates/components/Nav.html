@@ -1,0 +1,12 @@
+<nav class="container">
+	<ul>
+		<li><a href="/"><strong>Tibia Buddy</strong></a></li>
+	</ul>
+	<ul>
+		{{ if .IsLoggedIn }}
+		<li><a href="/logout">Logout</a></li>
+		{{ else }}
+		<li><a href="/login/google">Login with Google</a></li>
+		{{ end }}
+	</ul>
+</nav>

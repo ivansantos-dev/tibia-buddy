@@ -10,6 +10,8 @@ import (
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/gin-gonic/gin"
 )
 
 type IndexPageData struct {
@@ -39,6 +41,33 @@ func main() {
 	gob.Register(goth.User{})
 	go CheckWorlds(db)
 	go CheckFormerNames(db)
+
+	r := gin.Default()
+
+	r.LoadHTMLGlob("./templates/**/*")
+	r.Static("/static", "./static")
+
+	r.GET("/", func(c *gin.Context) {
+
+		data := IndexPageData{
+			IsLoggedIn:           false,
+			VipListTableData:     VipListTableData{VipList: GetVipList(db, userId)},
+			FormerNamesTableData: FormerNamesTableData{FormerNames: GetFormerNames(db, userId)},
+		}
+
+		c.HTML(200, "index.html", data)
+
+	})
+
+	r.GET("/vip-list", func(c *gin.Context) {
+		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
+	})
+
+	r.GET("/former-names", func(c *gin.Context) {
+		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
+	})
+
+	r.Run("127.0.0.1:8090")
 
 	router := mux.NewRouter()
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))

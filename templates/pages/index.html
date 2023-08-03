@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+	{{ template "Header.html" . }}
+	<body>
+		{{ template "Nav.html" . }}
+		<main class="container">
+
+			<section>
+				<h1>Vip List</h1>
+				<div hx-get="/vip-list" hx-trigger="load" hx-swap="outerHTML">'
+				</div>
+				<form hx-post="/vip-list" hx-target="#vip-list-table">
+					<progress class="htmx-indicator"></progress>
+					<input type="input" name="name" placeholder="Search for a buddy..." />
+				</form>
+			</section>
+
+			<section>
+				<h1>Former Names</h1>
+				<div hx-get="/former-names" hx-trigger="load" hx-swap="outerHTML">
+				</div>
+				<form hx-post="/former-names" hx-target="#former-names-table">
+					<progress class="htmx-indicator"></progress>
+					<input type="input" name="name" placeholder="Search for a character name..." />
+				</form>
+			</section>
+		</main>
+
+		{{ template "Footer.html" . }}
+	</body>
+</html>
+

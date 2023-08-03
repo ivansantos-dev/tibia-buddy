@@ -24,29 +24,6 @@
 	<progress class="htmx-indicator"></progress>
 	<input type="input" name="name" placeholder="Search for a buddy..." />
 </form>
-<h1>Former Names</h1>
-<div id="former-names-table">
-	<table role="grid">
-		<thead>
-			<th>Expiring Name</th>
-			<th>Status</th>
-			<th><span /></th>
-		</thead>
-		<tbody>
-			{{- range .FormerNamesTableData.FormerNames }}
-			<tr>
-				<td>{{ .Name }}</td>
-				<td>{{ .Status }}</td>
-				<td><a hx-delete="/former-names/{{ .Name }}" hx-target="body">Remove</a></td>
-			</tr>
-			{{end}}
-		</tbody>
-	</table>
-</div>
-<form hx-post="/former-names" hx-target="body">
-	<progress class="htmx-indicator"></progress>
-	<input type="input" name="name" placeholder="Search for a character name..." />
-</form>
 
 	{{ if .Error }}
 	<dialog open>
