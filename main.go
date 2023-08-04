@@ -52,7 +52,7 @@ func CreateFormerName(db *gorm.DB, formerName string) error {
 		status = available
 	}
 
-	var actualName string
+	var actualName = apiChar.CharacterInfo.Name 
 	if status == expiring {
 		for _, actualFormerName := range apiChar.CharacterInfo.FormerNames {
 			if strings.EqualFold(actualFormerName, formerName) {
@@ -74,6 +74,37 @@ func DeleteFormerName(db *gorm.DB, formerName string) error {
 	return nil
 }
 
+func CreateVipListFriend(db *gorm.DB, name string) error {
+	apiChar, err := GetCharacter(name)
+	if err != nil {
+		log.Error(err)
+	}
+
+	characterName := apiChar.CharacterInfo.Name
+	characterId := strings.ToLower(characterName)
+	log.WithFields(log.Fields{"name": characterName, "userId": userId}).Info("adding vip friend")
+	vipFriend := VipFriend{UserId: userId, PlayerId: characterId}
+	result2 := db.Where(&vipFriend).FirstOrCreate(&vipFriend)
+	log.Info(result2.RowsAffected, result2.Error)
+
+	if result2.RowsAffected > 0 {
+		player := Player{ID: characterId, Name: apiChar.CharacterInfo.Name, World: apiChar.CharacterInfo.World}
+		db.FirstOrCreate(&player)
+
+		var world = World{Name: apiChar.CharacterInfo.World}
+		db.FirstOrCreate(&world)
+	}
+	return nil
+
+}
+func DeleteVipListFriend(db *gorm.DB, name string) error {
+	playerId := strings.ToLower(name)
+	log.WithField("playerId", playerId).Info("deleting vip friend")
+	db.Unscoped().Where("player_id = ? AND user_id = ?", playerId, userId).Delete(&VipFriend{})
+
+	return nil
+}
+
 func main() {
 	db := initializeGorm()
 	gob.Register(goth.User{})
@@ -91,10 +122,19 @@ func main() {
 		}
 
 		c.HTML(200, "index.html", data)
-
 	})
 
 	r.GET("/vip-list", func(c *gin.Context) {
+		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
+	})
+
+	r.POST("/vip-list", func(c *gin.Context) {
+		CreateVipListFriend(db, c.PostForm("name"))
+		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
+	})
+
+	r.DELETE("/vip-list/:name", func(c *gin.Context) {
+		DeleteVipListFriend(db, c.Params.ByName("name"))
 		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
 	})
 
@@ -115,8 +155,6 @@ func main() {
 	r.Run("127.0.0.1:8090")
 
 	router := mux.NewRouter()
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-
 	router.HandleFunc("/login/{provider}", func(w http.ResponseWriter, r *http.Request) {
 		gothic.BeginAuthHandler(w, r)
 	})
@@ -161,49 +199,4 @@ func main() {
 		}
 		tmpl.Execute(w, data)
 	})
-
-	router.HandleFunc("/former-names/{name}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	}).Methods("DELETE")
-
-	router.HandleFunc("/vip-list", func(w http.ResponseWriter, r *http.Request) {
-		inputName := r.PostFormValue("name")
-		apiChar, err := GetCharacter(inputName)
-		if err != nil {
-			log.Error(err)
-		}
-
-		characterName := apiChar.CharacterInfo.Name
-		characterId := strings.ToLower(characterName)
-		log.WithFields(log.Fields{"name": characterName, "userId": userId}).Info("adding vip friend")
-		vipFriend := VipFriend{UserId: userId, PlayerId: characterId}
-		result2 := db.Where(&vipFriend).FirstOrCreate(&vipFriend)
-		log.Info(result2.RowsAffected, result2.Error)
-
-		if result2.RowsAffected > 0 {
-			player := Player{ID: characterId, Name: apiChar.CharacterInfo.Name, World: apiChar.CharacterInfo.World}
-			db.FirstOrCreate(&player)
-
-			var world = World{Name: apiChar.CharacterInfo.World}
-			db.FirstOrCreate(&world)
-		}
-
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	}).Methods("POST")
-
-	router.HandleFunc("/vip-list/{player}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-
-		playerId := strings.ToLower(vars["player"])
-
-		log.WithField("playerId", playerId).Info("deleting vip friend")
-		db.Unscoped().Where("player_id = ? AND user_id = ?", playerId, userId).Delete(&VipFriend{})
-
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	})
-
-	port := "127.0.0.1:8090"
-	log.Info("Listening to port: " + port)
-
-	log.Fatal(http.ListenAndServe(port, router))
 }
