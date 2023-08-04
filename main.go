@@ -2,11 +2,9 @@ package main
 
 import (
 	"encoding/gob"
-	"html/template"
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	log "github.com/sirupsen/logrus"
@@ -52,7 +50,7 @@ func CreateFormerName(db *gorm.DB, formerName string) error {
 		status = available
 	}
 
-	var actualName = apiChar.CharacterInfo.Name 
+	var actualName = apiChar.CharacterInfo.Name
 	if status == expiring {
 		for _, actualFormerName := range apiChar.CharacterInfo.FormerNames {
 			if strings.EqualFold(actualFormerName, formerName) {
@@ -117,8 +115,17 @@ func main() {
 	r.Static("/static", "./static")
 
 	r.GET("/", func(c *gin.Context) {
+		isLoggedIn := false
+		session, _ := store.Get(c.Request, sessionName)
+		user := session.Values["user"]
+		log.WithField("user", user).Info("index")
+
+		if user != nil && user.(goth.User).IDToken != "" {
+			isLoggedIn = true
+		}
+		log.WithFields(log.Fields{"user": user, "isLoggedIn": isLoggedIn}).Info("index")
 		data := IndexPageData{
-			IsLoggedIn: false,
+			IsLoggedIn: isLoggedIn,
 		}
 
 		c.HTML(200, "index.html", data)
@@ -152,14 +159,16 @@ func main() {
 		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
 	})
 
-	r.Run("127.0.0.1:8090")
-
-	router := mux.NewRouter()
-	router.HandleFunc("/login/{provider}", func(w http.ResponseWriter, r *http.Request) {
-		gothic.BeginAuthHandler(w, r)
+	r.GET("/login/:provider", func(c *gin.Context) {
+		q := c.Request.URL.Query()
+		q.Add("provider", c.Params.ByName("provider"))
+		c.Request.URL.RawQuery = q.Encode()
+		gothic.BeginAuthHandler(c.Writer, c.Request)
 	})
 
-	router.HandleFunc("/auth/{provider}/callback", func(w http.ResponseWriter, r *http.Request) {
+	r.GET("/auth/:provider/callback", func(c *gin.Context) {
+		w := c.Writer
+		r := c.Request
 		user, err := gothic.CompleteUserAuth(w, r)
 		if err != nil {
 			log.Error(err)
@@ -168,7 +177,13 @@ func main() {
 		http.Redirect(w, r, "/", http.StatusFound)
 	})
 
-	router.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+	r.GET("/logout", func(c *gin.Context) {
+		q := c.Request.URL.Query()
+		q.Add("provider", c.Params.ByName("provider"))
+		c.Request.URL.RawQuery = q.Encode()
+
+		w := c.Writer
+		r := c.Request
 		log.Println("Logging out")
 		err := gothic.Logout(w, r)
 		if err != nil {
@@ -179,24 +194,5 @@ func main() {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	})
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		isLoggedIn := true
-		session, _ := store.Get(r, sessionName)
-		user := session.Values["user"]
-		if user == nil || user.(goth.User).IDToken == "" {
-			isLoggedIn = false
-		}
-
-		tmpl, err := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/vip-table.html", "templates/former-names-table.html")
-		if err != nil {
-			log.Error("missing file", err)
-		}
-
-		data := IndexPageData{
-			IsLoggedIn:           isLoggedIn,
-			VipListTableData:     VipListTableData{VipList: GetVipList(db, userId)},
-			FormerNamesTableData: FormerNamesTableData{FormerNames: GetFormerNames(db, userId)},
-		}
-		tmpl.Execute(w, data)
-	})
+	r.Run("127.0.0.1:8090")
 }
