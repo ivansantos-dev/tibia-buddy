@@ -1,11 +1,10 @@
 package main
 
 import (
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
 	"log"
 	"time"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 type Player struct {

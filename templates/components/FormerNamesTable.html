@@ -1,18 +1,20 @@
 <div id="former-names-table" hx-get="/former-names" hx-trigger="every 10s">
-	<table role="grid">
-		<thead>
-			<th>Expiring Name</th>
-			<th>Status</th>
-			<th><span /></th>
-		</thead>
-		<tbody>
-			{{- range . }}
-			<tr>
-				<td>{{ .Name }}</td>
-				<td>{{ .Status }}</td>
-				<td><a hx-delete="/former-names/{{ .Name }}" hx-target="#former-names-table">Remove</a></td>
-			</tr>
-			{{end}}
-		</tbody>
-	</table>
+    <table role="grid">
+        <thead>
+        <tr>
+            <th>Expiring Name</th>
+            <th>Status</th>
+            <th><span/></th>
+        </tr>
+        </thead>
+        <tbody>
+        {{- range . }}
+        <tr>
+            <td>{{ .Name }}</td>
+            <td>{{ .Status }}</td>
+            <td><a hx-delete="/former-names/{{ .Name }}" hx-target="#former-names-table">Remove</a></td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
 </div>

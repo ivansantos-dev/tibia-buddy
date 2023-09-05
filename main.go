@@ -2,13 +2,16 @@ package main
 
 import (
 	"encoding/gob"
+	"fmt"
+	"github.com/joho/godotenv"
+	"io"
 	"net/http"
-	"strings"
+	"os"
+	"time"
 
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +31,7 @@ type FormerNamesTableData struct {
 	Error       string
 	FormerNames []FormerName
 }
+
 type ProfilePageData struct {
 	IsLoggedIn  bool
 	UserSetting UserSetting
@@ -35,77 +39,18 @@ type ProfilePageData struct {
 
 var userId = "1"
 
-func CreateFormerName(db *gorm.DB, formerName string) error {
-	apiChar, err := GetCharacter(formerName)
-	if err != nil {
-		log.Error(err)
-	}
-
-	status := expiring
-	if strings.EqualFold(apiChar.CharacterInfo.Name, formerName) {
-		status = claimed
-	}
-
-	if apiChar.CharacterInfo.World == "" {
-		status = available
-	}
-
-	var actualName = apiChar.CharacterInfo.Name
-	if status == expiring {
-		for _, actualFormerName := range apiChar.CharacterInfo.FormerNames {
-			if strings.EqualFold(actualFormerName, formerName) {
-				actualName = actualFormerName
-				break
-			}
-		}
-	}
-
-	log.WithFields(log.Fields{"name": actualName, "userId": userId}).Info("add former name")
-	db.Where("name = ? AND user_id = ?", actualName, userId).FirstOrCreate(&FormerName{Name: actualName, Status: status, UserId: userId})
-
-	return nil
-}
-
-func DeleteFormerName(db *gorm.DB, formerName string) error {
-	log.WithField("formerName", formerName).Info("deleting former name")
-	db.Unscoped().Where("name = ? AND user_id = ?", formerName, userId).Delete(&FormerName{})
-	return nil
-}
-
-func CreateVipListFriend(db *gorm.DB, name string) error {
-	apiChar, err := GetCharacter(name)
-	if err != nil {
-		log.Error(err)
-	}
-
-	characterName := apiChar.CharacterInfo.Name
-	characterId := strings.ToLower(characterName)
-	log.WithFields(log.Fields{"name": characterName, "userId": userId}).Info("adding vip friend")
-	vipFriend := VipFriend{UserId: userId, PlayerId: characterId}
-	result2 := db.Where(&vipFriend).FirstOrCreate(&vipFriend)
-	log.Info(result2.RowsAffected, result2.Error)
-
-	if result2.RowsAffected > 0 {
-		player := Player{ID: characterId, Name: apiChar.CharacterInfo.Name, World: apiChar.CharacterInfo.World}
-		db.FirstOrCreate(&player)
-
-		var world = World{Name: apiChar.CharacterInfo.World}
-		db.FirstOrCreate(&world)
-	}
-	return nil
-
-}
-func DeleteVipListFriend(db *gorm.DB, name string) error {
-	playerId := strings.ToLower(name)
-	log.WithField("playerId", playerId).Info("deleting vip friend")
-	db.Unscoped().Where("player_id = ? AND user_id = ?", playerId, userId).Delete(&VipFriend{})
-
-	return nil
-}
-
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	db := initializeGorm()
+	formerNameService := &FormerNameService{db: db}
+	vipListService := &VipListService{db: db}
 	gob.Register(goth.User{})
+	stream := NewServer()
+
 	go CheckWorlds(db)
 	go CheckFormerNames(db)
 
@@ -136,12 +81,12 @@ func main() {
 	})
 
 	r.POST("/vip-list", func(c *gin.Context) {
-		CreateVipListFriend(db, c.PostForm("name"))
+		vipListService.CreateVipListFriend(c.PostForm("name"))
 		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
 	})
 
 	r.DELETE("/vip-list/:name", func(c *gin.Context) {
-		DeleteVipListFriend(db, c.Params.ByName("name"))
+		vipListService.DeleteVipListFriend(c.Params.ByName("name"))
 		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
 	})
 
@@ -150,12 +95,12 @@ func main() {
 	})
 
 	r.POST("/former-names", func(c *gin.Context) {
-		CreateFormerName(db, c.PostForm("name"))
+		formerNameService.CreateFormerName(c.PostForm("name"))
 		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
 	})
 
 	r.DELETE("/former-names/:formerName", func(c *gin.Context) {
-		DeleteFormerName(db, c.Params.ByName("formerName"))
+		formerNameService.DeleteFormerName(c.Params.ByName("formerName"))
 		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
 	})
 
@@ -194,5 +139,36 @@ func main() {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	})
 
-	r.Run("127.0.0.1:8090")
+	r.GET("/stream", HeadersMiddleware(), stream.serveHTTP(), func(c *gin.Context) {
+		v, ok := c.Get("clientChan")
+		if !ok {
+			return
+		}
+		clientChan, ok := v.(ClientChan)
+		if !ok {
+			return
+		}
+		c.Stream(func(w io.Writer) bool {
+			// Stream message to client from message channel
+			if msg, ok := <-clientChan; ok {
+				c.SSEvent("message", msg)
+				return true
+			}
+
+			return false
+		})
+	})
+
+	go func() {
+		for {
+			time.Sleep(time.Second * 10)
+			now := time.Now().Format("2006-01-02 15:04:05")
+			currentTime := fmt.Sprintf("The Current Time Is %v", now)
+
+			// Send current time to clients message channel
+			stream.Message <- currentTime
+		}
+	}()
+
+	r.Run(os.Getenv("SERVER_URL"))
 }

@@ -2,12 +2,13 @@ package main
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/google"
-	"github.com/sirupsen/logrus"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,10 +22,12 @@ func InitializeSessionStore() *sessions.CookieStore {
 	store.Options.HttpOnly = true
 
 	gothic.Store = store
-	GOOGLE_OAUTH_CLIENT_ID := "470889723490-621rbcg3hk06stb2ubrujnu70anf1ugr.apps.googleusercontent.com"
-	GOOGLE_OAUTH_CLIENT_SECRET := "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"
+	googleOauthClientId := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
+	googleOauthClientSecret := os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	googleOauthCallBackUrl := os.Getenv("GOOGLE_OAUTH_CALLBACK_URL")
+
 	goth.UseProviders(
-		google.New(GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, "http://localhost:8090/auth/google/callback", "email", "profile"),
+		google.New(googleOauthClientId, googleOauthClientSecret, googleOauthCallBackUrl, "email", "profile"),
 	)
 
 	return store
@@ -33,7 +36,7 @@ func InitializeSessionStore() *sessions.CookieStore {
 func AddUserToSession(wr http.ResponseWriter, req *http.Request, user goth.User) {
 	session, err := store.Get(req, sessionName)
 	if err != nil {
-		logrus.Print("Error ", err)
+		log.Print("Error ", err)
 	}
 
 	// Remove the raw data to reduce the size
