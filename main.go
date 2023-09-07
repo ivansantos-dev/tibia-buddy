@@ -1,19 +1,11 @@
 package main
 
 import (
-	"encoding/gob"
-	"fmt"
-	"github.com/joho/godotenv"
-	"io"
-	"net/http"
-	"os"
-	"time"
-
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/gothic"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	log "github.com/sirupsen/logrus"
+	"os"
+	"strings"
 )
 
 type IndexPageData struct {
@@ -32,12 +24,69 @@ type FormerNamesTableData struct {
 	FormerNames []FormerName
 }
 
-type ProfilePageData struct {
-	IsLoggedIn  bool
-	UserSetting UserSetting
+var userId = "1"
+var defaultNames = []string{"Aragorn"}
+
+func filterEmpty(slice []string) []string {
+	var result []string
+	for _, str := range slice {
+		if str != "" {
+			result = append(result, str)
+		}
+	}
+	return result
+}
+func GetVipList(c *gin.Context) []string {
+	listStr, err := c.Cookie("vip-list")
+	if err != nil {
+		log.Error("Failed to get cookie", err)
+	}
+	return filterEmpty(strings.Split(listStr, ","))
 }
 
-var userId = "1"
+func AddVipList(c *gin.Context, name string) []string {
+	list := GetVipList(c)
+	// do not appemd of name is already in list
+	for _, n := range list {
+		if n == name {
+			return list
+		}
+	}
+	list = append(list, name)
+	SetVipListCookie(c, list)
+	return list
+}
+
+func RemoveVipList(c *gin.Context, name string) []string {
+	list := GetVipList(c)
+	for i, n := range list {
+		if n == name {
+			if len(list) == 1 {
+				list = []string{}
+				break
+			}
+			list = append(list[:i], list[i+1:]...)
+		}
+	}
+	SetVipListCookie(c, list)
+	return list
+}
+
+func SetVipListCookie(c *gin.Context, names []string) {
+	setCookie(c, "vip-list", names)
+}
+
+func SetFormerNameCookie(c *gin.Context, names []string) {
+	setCookie(c, "former-names", names)
+}
+
+func setCookie(c *gin.Context, cookieName string, names []string) {
+	if len(names) == 0 {
+		c.SetCookie(cookieName, "", -1, "/", os.Getenv("DOMAIN"), false, true)
+		return
+	}
+	c.SetCookie(cookieName, strings.Join(names, ","), 365*24*60*60, "/", os.Getenv("DOMAIN"), false, true)
+}
 
 func main() {
 	err := godotenv.Load()
@@ -45,14 +94,14 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	db := initializeGorm()
-	formerNameService := &FormerNameService{db: db}
-	vipListService := &VipListService{db: db}
-	gob.Register(goth.User{})
-	stream := NewServer()
+	db := DB{}
+	db.InitializeGorm()
 
-	go CheckWorlds(db)
-	go CheckFormerNames(db)
+	formerNameService := &FormerNameService{db: db.db}
+	vipListService := &VipListService{db: db.db}
+
+	go CheckWorlds(db.db)
+	go CheckFormerNames(db.db)
 
 	r := gin.Default()
 
@@ -60,115 +109,37 @@ func main() {
 	r.Static("/static", "./static")
 
 	r.GET("/", func(c *gin.Context) {
-		isLoggedIn := false
-		session, _ := store.Get(c.Request, sessionName)
-		user := session.Values["user"]
-		log.WithField("user", user).Info("index")
-
-		if user != nil && user.(goth.User).IDToken != "" {
-			isLoggedIn = true
-		}
-		log.WithFields(log.Fields{"user": user, "isLoggedIn": isLoggedIn}).Info("index")
-		data := IndexPageData{
-			IsLoggedIn: isLoggedIn,
-		}
-
-		c.HTML(200, "index.html", data)
+		c.HTML(200, "index.html", nil)
 	})
 
 	r.GET("/vip-list", func(c *gin.Context) {
-		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
+		c.HTML(200, "VipListTable.html", db.GetVipList(GetVipList(c)))
 	})
 
 	r.POST("/vip-list", func(c *gin.Context) {
-		vipListService.CreateVipListFriend(c.PostForm("name"))
-		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
+		name := c.PostForm("name")
+		vipListService.CreateVipListFriend(name)
+		c.HTML(200, "VipListTable.html", db.GetVipList(AddVipList(c, name)))
 	})
 
 	r.DELETE("/vip-list/:name", func(c *gin.Context) {
-		vipListService.DeleteVipListFriend(c.Params.ByName("name"))
-		c.HTML(200, "VipListTable.html", GetVipList(db, userId))
+		RemoveVipList(c, c.Params.ByName("name"))
+		c.HTML(200, "VipListTable.html", db.GetVipList(RemoveVipList(c, c.Params.ByName("name"))))
 	})
 
 	r.GET("/former-names", func(c *gin.Context) {
-		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
+		c.HTML(200, "FormerNamesTable.html", db.GetFormerNames(defaultNames))
 	})
 
 	r.POST("/former-names", func(c *gin.Context) {
 		formerNameService.CreateFormerName(c.PostForm("name"))
-		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
+		c.HTML(200, "FormerNamesTable.html", db.GetFormerNames(defaultNames))
 	})
 
 	r.DELETE("/former-names/:formerName", func(c *gin.Context) {
 		formerNameService.DeleteFormerName(c.Params.ByName("formerName"))
-		c.HTML(200, "FormerNamesTable.html", GetFormerNames(db, userId))
+		c.HTML(200, "FormerNamesTable.html", db.GetFormerNames(defaultNames))
 	})
-
-	r.GET("/login/:provider", func(c *gin.Context) {
-		q := c.Request.URL.Query()
-		q.Add("provider", c.Params.ByName("provider"))
-		c.Request.URL.RawQuery = q.Encode()
-		gothic.BeginAuthHandler(c.Writer, c.Request)
-	})
-
-	r.GET("/auth/:provider/callback", func(c *gin.Context) {
-		w := c.Writer
-		r := c.Request
-		user, err := gothic.CompleteUserAuth(w, r)
-		if err != nil {
-			log.Error(err)
-		}
-		AddUserToSession(w, r, user)
-		http.Redirect(w, r, "/", http.StatusFound)
-	})
-
-	r.GET("/logout", func(c *gin.Context) {
-		q := c.Request.URL.Query()
-		q.Add("provider", c.Params.ByName("provider"))
-		c.Request.URL.RawQuery = q.Encode()
-
-		w := c.Writer
-		r := c.Request
-		log.Println("Logging out")
-		err := gothic.Logout(w, r)
-		if err != nil {
-			log.Print("Logout fail", err)
-		}
-		RemoveUserFromSession(w, r)
-		w.Header().Set("Location", "/")
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	})
-
-	r.GET("/stream", HeadersMiddleware(), stream.serveHTTP(), func(c *gin.Context) {
-		v, ok := c.Get("clientChan")
-		if !ok {
-			return
-		}
-		clientChan, ok := v.(ClientChan)
-		if !ok {
-			return
-		}
-		c.Stream(func(w io.Writer) bool {
-			// Stream message to client from message channel
-			if msg, ok := <-clientChan; ok {
-				c.SSEvent("message", msg)
-				return true
-			}
-
-			return false
-		})
-	})
-
-	go func() {
-		for {
-			time.Sleep(time.Second * 10)
-			now := time.Now().Format("2006-01-02 15:04:05")
-			currentTime := fmt.Sprintf("The Current Time Is %v", now)
-
-			// Send current time to clients message channel
-			stream.Message <- currentTime
-		}
-	}()
 
 	r.Run(os.Getenv("SERVER_URL"))
 }

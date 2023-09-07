@@ -51,7 +51,6 @@ type VipListService struct {
 	db *gorm.DB
 }
 
-
 func (s *VipListService) CreateVipListFriend(name string) error {
 	apiChar, err := GetCharacter(name)
 	if err != nil {

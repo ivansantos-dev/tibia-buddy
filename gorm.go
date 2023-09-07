@@ -53,7 +53,11 @@ type VipFriend struct {
 	PlayerId string
 }
 
-func initializeGorm() *gorm.DB {
+type DB struct {
+	db *gorm.DB
+}
+
+func (c *DB) InitializeGorm() {
 	dbName := "test.db"
 	log.Println("Initialize Gorm in " + dbName)
 
@@ -68,26 +72,17 @@ func initializeGorm() *gorm.DB {
 	db.AutoMigrate(&FormerName{})
 	db.AutoMigrate(&VipFriend{})
 
-	return db
+	c.db = db
 }
 
-func GetVipList(db *gorm.DB, userId string) []Player {
+func (c *DB) GetVipList(names []string) []Player {
 	var vipList []Player
-	db.Model(&Player{}).Where("user_id = ?", userId).Joins("left join vip_friends on players.id = vip_friends.player_id").Scan(&vipList)
-
+	c.db.Where("name IN ?", names).Find(&vipList)
 	return vipList
 }
 
-func GetFormerNames(db *gorm.DB, userId string) []FormerName {
+func (c *DB) GetFormerNames(names []string) []FormerName {
 	var formerNames []FormerName
-	db.Where("user_id = ?", userId).Find(&formerNames)
-
+	c.db.Where("name IN ?", names).Find(&formerNames)
 	return formerNames
-}
-
-func GetUserSettings(db *gorm.DB, userId string) UserSetting {
-	var user UserSetting
-	db.First(&user, userId)
-
-	return user
 }
