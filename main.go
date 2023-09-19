@@ -8,25 +8,6 @@ import (
 	"strings"
 )
 
-type IndexPageData struct {
-	IsLoggedIn           bool
-	VipListTableData     VipListTableData
-	FormerNamesTableData FormerNamesTableData
-}
-
-type VipListTableData struct {
-	Error   string
-	VipList []Player
-}
-
-type FormerNamesTableData struct {
-	Error       string
-	FormerNames []FormerName
-}
-
-var userId = "1"
-var defaultNames = []string{"Aragorn"}
-
 func filterEmpty(slice []string) []string {
 	var result []string
 	for _, str := range slice {
@@ -36,6 +17,28 @@ func filterEmpty(slice []string) []string {
 	}
 	return result
 }
+func GetFormerNameList(c *gin.Context) []string {
+	listStr, err := c.Cookie("former-names")
+	if err != nil {
+		log.Error("Failed to get cookie", err)
+	}
+	return filterEmpty(strings.Split(listStr, ","))
+}
+
+func AddFormerNameList(c *gin.Context, name string) []string {
+	list := GetFormerNameList(c)
+	list = addName(list, name)
+	SetFormerNameCookie(c, list)
+	return list
+}
+
+func RemoveFormerNameList(c *gin.Context, name string) []string {
+	list := GetFormerNameList(c)
+	list = removeName(list, name)
+	SetFormerNameCookie(c, list)
+	return list
+}
+
 func GetVipList(c *gin.Context) []string {
 	listStr, err := c.Cookie("vip-list")
 	if err != nil {
@@ -46,19 +49,28 @@ func GetVipList(c *gin.Context) []string {
 
 func AddVipList(c *gin.Context, name string) []string {
 	list := GetVipList(c)
-	// do not appemd of name is already in list
+	list = addName(list, name)
+	SetVipListCookie(c, list)
+	return list
+}
+
+func addName(list []string, name string) []string {
 	for _, n := range list {
 		if n == name {
 			return list
 		}
 	}
-	list = append(list, name)
-	SetVipListCookie(c, list)
-	return list
+	return append(list, name)
 }
 
 func RemoveVipList(c *gin.Context, name string) []string {
 	list := GetVipList(c)
+	list = removeName(list, name)
+	SetVipListCookie(c, list)
+	return list
+}
+
+func removeName(list []string, name string) []string {
 	for i, n := range list {
 		if n == name {
 			if len(list) == 1 {
@@ -68,7 +80,6 @@ func RemoveVipList(c *gin.Context, name string) []string {
 			list = append(list[:i], list[i+1:]...)
 		}
 	}
-	SetVipListCookie(c, list)
 	return list
 }
 
@@ -113,32 +124,58 @@ func main() {
 	})
 
 	r.GET("/vip-list", func(c *gin.Context) {
-		c.HTML(200, "VipListTable.html", db.GetVipList(GetVipList(c)))
+		c.HTML(200, "VipListTable.html", gin.H{
+			"VipList": db.GetVipList(GetVipList(c)),
+		})
 	})
 
-	r.POST("/vip-list", func(c *gin.Context) {
+	r.PUT("/vip-list/:name", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		err := vipListService.CreateVipListFriend(name)
+		if err != nil {
+		}
+
+		c.HTML(200, "VipListTable.html", gin.H{
+			"VipList": db.GetVipList(AddVipList(c, c.Params.ByName("name"))),
+		})
+	})
+
+	r.POST("/search-vip-list", func(c *gin.Context) {
 		name := c.PostForm("name")
-		vipListService.CreateVipListFriend(name)
-		c.HTML(200, "VipListTable.html", db.GetVipList(AddVipList(c, name)))
+		apiChar, err := GetCharacter(name)
+		if err != nil {
+			log.Error(err)
+		}
+
+		c.HTML(200, "SearchVipListModal.html", gin.H{"Char": apiChar.CharacterInfo, "SafeCharName": apiChar.CharacterInfo.Name})
 	})
 
 	r.DELETE("/vip-list/:name", func(c *gin.Context) {
-		RemoveVipList(c, c.Params.ByName("name"))
-		c.HTML(200, "VipListTable.html", db.GetVipList(RemoveVipList(c, c.Params.ByName("name"))))
+		c.HTML(200, "VipListTable.html", gin.H{
+			"VipList": db.GetVipList(RemoveVipList(c, c.Params.ByName("name"))),
+		})
 	})
 
 	r.GET("/former-names", func(c *gin.Context) {
-		c.HTML(200, "FormerNamesTable.html", db.GetFormerNames(defaultNames))
+		c.HTML(200, "FormerNamesTable.html", gin.H{"FormerNames": db.GetFormerNames(GetFormerNameList(c))})
 	})
 
 	r.POST("/former-names", func(c *gin.Context) {
-		formerNameService.CreateFormerName(c.PostForm("name"))
-		c.HTML(200, "FormerNamesTable.html", db.GetFormerNames(defaultNames))
+		name := c.PostForm("name")
+		err := formerNameService.CreateFormerName(name)
+		var errorText string
+		if err != nil {
+			errorText = err.Error()
+		}
+
+		c.HTML(200, "FormerNamesTable.html", gin.H{"Error": errorText, "FormerNames": db.GetFormerNames(AddFormerNameList(c, name))})
 	})
 
 	r.DELETE("/former-names/:formerName", func(c *gin.Context) {
-		formerNameService.DeleteFormerName(c.Params.ByName("formerName"))
-		c.HTML(200, "FormerNamesTable.html", db.GetFormerNames(defaultNames))
+		name := c.Params.ByName("formerName")
+		c.HTML(200, "FormerNamesTable.html", gin.H{
+			"FormerNames": db.GetFormerNames(RemoveFormerNameList(c, name)),
+		})
 	})
 
 	r.Run(os.Getenv("SERVER_URL"))

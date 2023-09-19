@@ -9,9 +9,9 @@
         <h1>Vip List</h1>
         <div hx-get="/vip-list" hx-trigger="load" hx-swap="outerHTML">'
         </div>
-        <form hx-post="/vip-list" hx-target="#vip-list-table">
+        <form hx-post="/search-vip-list" hx-target="#modal">
             <progress class="htmx-indicator"></progress>
-            <input type="input" name="name" placeholder="Search for a buddy..."/>
+            <input type="text" name="name" placeholder="Search for a buddy..."/>
         </form>
     </section>
 
@@ -21,10 +21,12 @@
         </div>
         <form hx-post="/former-names" hx-target="#former-names-table">
             <progress class="htmx-indicator"></progress>
-            <input type="input" name="name" placeholder="Search for a character name..."/>
+            <input type="text" name="name" placeholder="Search for a character name..."/>
         </form>
     </section>
 </main>
+<div id="modal"></div>
+
 {{ template "Footer.html" . }}
 </body>
 </html>

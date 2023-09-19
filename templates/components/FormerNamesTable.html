@@ -8,7 +8,7 @@
         </tr>
         </thead>
         <tbody>
-        {{- range . }}
+        {{- range .FormerNames }}
         <tr>
             <td>{{ .Name }}</td>
             <td>{{ .Status }}</td>
@@ -17,4 +17,7 @@
         {{end}}
         </tbody>
     </table>
+    {{- if .Error }}
+    <p>{{.Error}}</p>
+    {{end}}
 </div>

@@ -1,0 +1,36 @@
+<dialog open>
+    <article>
+        <h3>Search Character</h3>
+        <table>
+            <tr>
+                <th>Name</th>
+                <td>{{.Char.Name}}</td>
+            </tr>
+            <tr>
+                <th>World</th>
+                <td>{{.Char.World}}</td>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <td>
+                    <pre>{{.Char}}</pre>
+                </td>
+            </tr>
+        </table>
+
+        <footer>
+            <button class="secondary"
+                    hx-on="click: this.closest('dialog').remove()"
+            >
+                Cancel
+            </button>
+            <button
+                    hx-put="/vip-list/{{.SafeCharName}}"
+                    hx-target="#vip-list-table"
+                    hx-on::after-request="this.closest('dialog').remove()"
+            >
+                Confirm
+            </button>
+        </footer>
+    </article>
+</dialog>

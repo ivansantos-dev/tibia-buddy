@@ -44,13 +44,6 @@ type FormerName struct {
 	gorm.Model
 	Name   string
 	Status FormerNameStatus
-	UserId string
-}
-
-type VipFriend struct {
-	gorm.Model
-	UserId   string
-	PlayerId string
 }
 
 type DB struct {
@@ -68,9 +61,7 @@ func (c *DB) InitializeGorm() {
 
 	db.AutoMigrate(&Player{})
 	db.AutoMigrate(&World{})
-	db.AutoMigrate(&UserSetting{})
 	db.AutoMigrate(&FormerName{})
-	db.AutoMigrate(&VipFriend{})
 
 	c.db = db
 }
