@@ -38,11 +38,13 @@
             </thead>
             <tbody>
 
+            {{- range .VipList }}
             <tr>
-                <td>Luffy</td>
-                <td>East Blue</td>
-                <td>online</td>
+                <td>{{.Name}}</td>
+                <td>{{.World}}</td>
+                <td>{{.Status}}</td>
             </tr>
+            {{- end }}
             </tbody>
         </table>
     </article>
@@ -72,7 +74,7 @@
                 <button type="submit">Search</button>
             </form>
         </header>
-        <div id="search-table" style="min-height: 325px"></div>
+        <div id="search-table" style="min-height: 250px"></div>
         <footer>
             <a href="/" class="secondary" role="button">Close</a>
         </footer>
@@ -84,38 +86,38 @@
 {{end}}
 
 {{define "search-table"}}
+{{if .Error}}
+<p>{{.Error}}</p>
+{{else}}
 <table>
     <tbody>
     <tr>
         <td>Name</td>
-        <td>Luffy</td>
+        <td>{{.Name}}</td>
     </tr>
     <tr>
         <td>World</td>
-        <td>East Blue</td>
+        <td>{{.World}}</td>
     </tr>
     <tr>
         <td>Level</td>
-        <td>100</td>
+        <td>{{.Level}}</td>
     </tr>
     <tr>
-        <td>Status</td>
-        <td>Offline</td>
-    </tr>
-    <tr>
-        <td>Other Characters</td>
+        <td>Former Names</td>
         <td>
             <ul>
-                <li>Zoro</li>
-                <li>Nami</li>
-                <li>Sanji</li>
+                {{- range .FormerNames}}
+                <li>{{.}}</li>
+                {{- end}}
             </ul>
         </td>
     </tr>
     </tbody>
 </table>
-<a href="#" role="button"
-   hx-put="/vip-list/{{.}}"
-   hx-target="body"
->Add to my VIP List</a>
+<button
+   hx-put="/vip-list/{{.Name}}"
+   hx-swap="outerHTML"
+>Add to my VIP List</button>
+{{end}}
 {{end}}

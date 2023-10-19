@@ -121,6 +121,10 @@ func GetCharacter(name string) (*Character, error) {
 	charResponse := &CharacterResponse{}
 	json.NewDecoder(resp.Body).Decode(&charResponse)
 
+	if charResponse.Character.CharacterInfo.Name == "" {
+		return nil, fmt.Errorf("Character not found")
+	}
+
 	return &charResponse.Character, nil
 }
 
