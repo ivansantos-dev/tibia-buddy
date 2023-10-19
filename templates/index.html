@@ -1,0 +1,121 @@
+{{define "index"}}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="/static/htmx.min.js"></script>
+    <link rel="stylesheet" href="/static/css/pico.min.css">
+
+    <title>Tibia Buddy</title>
+</head>
+<body hx-boost="true">
+<nav class="container-fluid">
+    <ul>
+        <li><strong>TIBIA BUDDY</strong></li>
+    </ul>
+    <ul>
+        <li><a href="#" role="button" class="secondary">Refresh Data</a></li>
+        <li><a href="#" role="button">Login with Google</a></li>
+    </ul>
+</nav>
+<main class="container">
+    <article>
+        <header>
+            <hgroup>
+                <h1>VIP List</h1>
+                <h2>Track your buddies</h2>
+            </hgroup>
+        </header>
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>World</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <tr>
+                <td>Luffy</td>
+                <td>East Blue</td>
+                <td>online</td>
+            </tr>
+            </tbody>
+        </table>
+    </article>
+    <button onclick="document.getElementById('search-modal').showModal()">Add Friend</button>
+</main>
+<footer class="container-fluid">
+    <small
+    >Built with
+        <a href="https://go.dev/" target="_blank">Go</a> •
+        <a href="https://htmx.org" target="_blank">HTMX</a> •
+        <a href="https://picocss.com" target="_blank">Pico</a>
+    </small>
+    <br>
+    <small>
+        Made by rustyyy_dog
+    </small>
+</footer>
+
+<dialog id="search-modal">
+    <article style="width: 500px">
+        <header>
+            <form
+                    hx-post="/search"
+                    hx-target="#search-table"
+            >
+                <input type="search" id="search" name="search_name" placeholder="Search for your buddy">
+                <button type="submit">Search</button>
+            </form>
+        </header>
+        <div id="search-table" style="min-height: 325px"></div>
+        <footer>
+            <a href="/" class="secondary" role="button">Close</a>
+        </footer>
+    </article>
+</dialog>
+</body>
+</html>
+
+{{end}}
+
+{{define "search-table"}}
+<table>
+    <tbody>
+    <tr>
+        <td>Name</td>
+        <td>Luffy</td>
+    </tr>
+    <tr>
+        <td>World</td>
+        <td>East Blue</td>
+    </tr>
+    <tr>
+        <td>Level</td>
+        <td>100</td>
+    </tr>
+    <tr>
+        <td>Status</td>
+        <td>Offline</td>
+    </tr>
+    <tr>
+        <td>Other Characters</td>
+        <td>
+            <ul>
+                <li>Zoro</li>
+                <li>Nami</li>
+                <li>Sanji</li>
+            </ul>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<a href="#" role="button"
+   hx-put="/vip-list/{{.}}"
+   hx-target="body"
+>Add to my VIP List</a>
+{{end}}
